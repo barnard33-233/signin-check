@@ -2,65 +2,86 @@
 
 #config:
 repo_addr="https://se.jisuanke.com/whu-summer-course-2022/404"
+# repo_addr="git@github.com:barnard33-233/signin-check.git" 3 for test
+repo_name="404"
 class_id="404"
-id_file="./404.csv"
+id_file="../404.csv"
 pass_file="../pass.csv"
 
-if [! -f $pass_file]; then
-    echo "缺少密码文件"
-fi
 
-# pull or clone from remote repo:
-if [ ! -d $class_id ]; then
-    git clone $repo_addr &>/dev/null
-    cd ./$class_id
-else
-    cd ./$class_id
-    git pull --all &>/dev/null
-fi
-
-
-#judge:
-if [$1 == "all"]; then
-    if [! -f $id_file]; then
-        echo "缺少学号文件"
-    fi
-    for line in `cat $id_file`
-    do
-        check $line
-    done
-elif [$1 =~ [0-9] -a $2 =~ [0-9a-zA-Z]]; then
-    check $1
-else
-    echo "usage: ./check.sh [student_id student_name | all]"
-
-
-
-function check() # $1:学号
-{
+function check(){
     stu_id="$1"
-    branch_name=`git branch -a | grep $stu_id`
+    branch_name=`git branch | grep $stu_id`
+    echo "----$stu_id----"
 
-    if [branch_name = ""]; then
+    if [ "$branch_name" == "" ]; then
         echo "$stu_id: 缺少分支"
         return
     fi
-    git checkout -f $branch_name &> /dev/null
+    git checkout $branch_name &> /dev/null
 
-    OLDIFS=$IFS
-    IFS=","
-    while read $mydate $pass
-        if [! -f $mydate]; then
+    for line in `cat $pass_file`
+    do
+        mydate=`echo $line | cut -d ',' -f1`
+        pass=`echo $line | cut -d ',' -f2`
+        if [ ! -f "$mydate" ]; then
             echo "$stu_id: $mydate 签到文件缺失"
-            return
+            continue
         fi
         plaintext=$stu_id$pass$class_id
         md5val=`echo $plaintext | md5sum | cut -d ' ' -f1`
         md5val=`echo $plaintext | tr -d "\n" | md5sum | cut -d ' ' -f1`
         md5read=`cat $mydate | tr [A-Z] [a-z]`
-        if [$md5read == $md5val -o $md5read == $md5val1]; then
+        if [ "$md5read" != "$md5val" -a "$md5read" != "$md5val1" ]; then
             echo "$stu_id: $mydate md5验证失败"
         fi
     done < $pass_file
-    IFS=OLDIFS
 }
+
+# pull or clone from remote repo:
+if [ ! -d $repo_name ]; then
+    git clone $repo_addr &>/dev/null
+    cd ./$repo_name
+    if [ "$1" == "all" ]; then
+        git branch -r | grep -v '\->' | 
+        while read remote
+        do
+            git branch --track "${remote#origin/}" "$remote"
+        done
+        git fetch --all &>/dev/null
+        git pull --all &>/dev/null
+    fi
+else
+    cd ./$repo_name
+    if [ "$1" == "all" ]; then
+        git branch -r | grep -v '\->' | 
+        while read remote
+        do
+            git branch --track "${remote#origin/}" "$remote"
+        done
+        git fetch --all &>/dev/null
+    fi
+    git pull --all &>/dev/null
+fi
+
+if [ ! -f $pass_file ]; then
+    echo "缺少密码文件"
+    exit
+fi
+
+
+#judge:
+if [ "$1" == "all" ]; then
+    if [ ! -f $id_file ]; then
+        echo "缺少学号文件"
+        exit
+    fi
+    for line in `cat $id_file`
+    do
+        check $line
+    done
+elif [[ "$1" =~ [0-9] ]]; then
+    check $1
+else
+    echo "usage: ./check.sh [student_id student_name | all]"
+fi
