@@ -11,18 +11,28 @@ pass_file="../pass.csv"
 
 function check(){
     stu_id="$1"
-    branch_name=`git branch | grep $stu_id`
-    # echo "----$stu_id----" #这里在稳定之后可以删掉
+    stu_name="$2"
+    if [ "$stu_name" != "" ]; then
+        branch_name=$stu_id$stu_name
+        git checkout $branch_name &> /dev/null
+        if [ $? != 0 ]; then
+            echo "$stu_id: 缺少分支"
+            return
+        fi
+    else
+        branch_name=`git branch | grep $stu_id`
+        if [ "$branch_name" == "" ]; then
+            echo "$stu_id: 缺少分支"
+            return
+        fi
+        git checkout $branch_name &> /dev/null
+        if [ $? != 0 ]; then
+            echo "$stu_id: 分支过多，需手动检查"
+            return
+        fi
+    fi
+    # echo "----$stu_id----" #debug info
 
-    if [ "$branch_name" == "" ]; then
-        echo "$stu_id: 缺少分支"
-        return
-    fi
-    git checkout $branch_name &> /dev/null
-    if [ $? != 0 ]; then
-        echo "$stu_id: 分支过多，需手动检查"
-        return
-    fi
 
     for line in `cat $pass_file`
     do
@@ -87,7 +97,11 @@ if [ "$1" == "all" ]; then
         check $line
     done
 elif [[ "$1" =~ [0-9] ]]; then
-    check $1
+    if [ "$2" != "" ]; then
+        check $1 $2
+    else
+        check $1
+    fi
 else
     echo "usage: ./check.sh [student_id student_name | all]"
 fi
