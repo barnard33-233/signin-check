@@ -25,6 +25,9 @@ function check(){
             echo "$stu_id: 缺少分支"
             return
         fi
+        if ! [[ "$branch_name" =~ [a-zA-Z0-9] ]]; then
+            branch_name=`echo $branch_name | cut -d ' ' -f2`
+        fi
         git checkout $branch_name &> /dev/null
         if [ $? != 0 ]; then
             echo "$stu_id: 分支过多，需手动检查"
@@ -46,10 +49,11 @@ function check(){
         md5val=`echo $plaintext | md5sum | cut -d ' ' -f1`
         md5val1=`echo $plaintext | tr -d "\n" | md5sum | cut -d ' ' -f1`
         md5read=`cat $mydate | tr [A-Z] [a-z]`
-        if [ "$md5read" != "$md5val" -a "$md5read" != "$md5val1" ]; then
-            echo "$stu_id: $mydate md5验证失败"
-        else
+        # echo "_$md5read\__$md5val\__$md5val1$"
+        if [ "$md5read" == "$md5val1" ]; then
             echo "$stu_id: $mydate 成功"
+        else
+            echo "$stu_id: $mydate md5验证失败"
         fi
     done < $pass_file
 }
