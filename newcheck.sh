@@ -2,7 +2,7 @@
 
 #config:
 repo_addr="https://se.jisuanke.com/whu-summer-course-2022/404"
-# repo_addr="git@github.com:barnard33-233/signin-check.git" 3 for test
+# repo_addr="git@github.com:barnard33-233/signin-check.git" # for test
 repo_name="404"
 class_id="404"
 id_file="../404.csv"
@@ -12,13 +12,17 @@ pass_file="../pass.csv"
 function check(){
     stu_id="$1"
     branch_name=`git branch | grep $stu_id`
-    echo "----$stu_id----"
+    # echo "----$stu_id----" #这里在稳定之后可以删掉
 
     if [ "$branch_name" == "" ]; then
         echo "$stu_id: 缺少分支"
         return
     fi
     git checkout $branch_name &> /dev/null
+    if [ $? != 0 ]; then
+        echo "$stu_id: 分支过多，需手动检查"
+        return
+    fi
 
     for line in `cat $pass_file`
     do
@@ -30,10 +34,12 @@ function check(){
         fi
         plaintext=$stu_id$pass$class_id
         md5val=`echo $plaintext | md5sum | cut -d ' ' -f1`
-        md5val=`echo $plaintext | tr -d "\n" | md5sum | cut -d ' ' -f1`
+        md5val1=`echo $plaintext | tr -d "\n" | md5sum | cut -d ' ' -f1`
         md5read=`cat $mydate | tr [A-Z] [a-z]`
         if [ "$md5read" != "$md5val" -a "$md5read" != "$md5val1" ]; then
             echo "$stu_id: $mydate md5验证失败"
+        else
+            echo "$stu_id: $mydate 成功"
         fi
     done < $pass_file
 }
